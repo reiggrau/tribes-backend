@@ -34,11 +34,11 @@ import fs from "fs";
 
 /// AWS ///
 import aws from "aws-sdk";
-import secrets from "./secrets.js";
+// import secrets from "./secrets.js";
 
 const s3 = new aws.S3({
-    accessKeyId: secrets.AWS_KEY,
-    secretAccessKey: secrets.AWS_SECRET,
+    accessKeyId: process.env.AWS_KEY,
+    secretAccessKey: process.env.AWS_SECRET,
 });
 
 // socket.io
