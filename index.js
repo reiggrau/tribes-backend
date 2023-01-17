@@ -1,4 +1,5 @@
-import express, { static as staticServe } from "express";
+// import express, { static as staticServe } from "express";
+import express from "express";
 const app = express();
 import compression from "compression";
 import proxy from "express-http-proxy";
@@ -75,9 +76,10 @@ io.on("connection", async (socket) => {
 
     app.use(cookieSessionMiddleware);
 
-    // app.use(compression());
+    app.use(compression());
 
-    app.use(staticServe("public"));
+    // app.use(staticServe("public"));
+
     console.log("socketId:", socketId);
 
     db.setUserOnlineStatus(userId, true); // Update online status
@@ -141,16 +143,6 @@ io.on("connection", async (socket) => {
     });
 });
 
-// app.use((req, res, next) => {
-//     console.log("---------------------");
-//     console.log("req.url:", req.url);
-//     console.log("req.method:", req.method);
-//     console.log("req.session:", req.session);
-//     console.log("req.body:", req.body);
-//     console.log("---------------------");
-//     next();
-// });
-
 // MIDDLEWARE
 app.use(express.json()); // This is needed to read the req.body
 
@@ -158,7 +150,7 @@ app.use(cookieSessionMiddleware);
 
 app.use(compression());
 
-app.use(staticServe("public"));
+// app.use(staticServe("public"));
 
 // ROUTES
 // Get user id from cookie
