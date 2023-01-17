@@ -1,7 +1,7 @@
 import express, { static as staticServe } from "express";
 const app = express();
-// import compression from "compression";
-// import proxy from "express-http-proxy";
+import compression from "compression";
+import proxy from "express-http-proxy";
 
 // SETUP
 const PORT = process.env.PORT || 3000;
