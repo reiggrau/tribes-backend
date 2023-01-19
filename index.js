@@ -5,7 +5,7 @@ import compression from "compression";
 import proxy from "express-http-proxy";
 
 // SETUP
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // cookies
 import cookieSession from "cookie-session";
@@ -70,7 +70,9 @@ io.on("connection", async (socket) => {
     const userId = socket.request.session.id;
     socketId[userId] = socket.id;
 
-    console.log("connection. id:", userId, "socketId:", socket.id);
+    console.log("io.on connection. userId:", userId, "socketId :", socketId[userId]);
+    console.log("new socketId:", socketId);
+
     // MIDDLEWARE
     app.use(express.json()); // This is needed to read the req.body
 
@@ -80,12 +82,11 @@ io.on("connection", async (socket) => {
 
     // app.use(staticServe("public"));
 
-    console.log("socketId:", socketId);
-
     db.setUserOnlineStatus(userId, true); // Update online status
 
     db.getFriendsId(userId).then((data) => {
-        console.log("getFriendsId data:", data);
+        console.log("getFriendsId data :", data);
+
         for (const element of data) {
             const friendId = element.id;
             if (Object.prototype.hasOwnProperty.call(socketId, friendId)) {
@@ -101,10 +102,10 @@ io.on("connection", async (socket) => {
     }
 
     socket.on("disconnect", function () {
-        console.log("disconnect. id:", userId);
+        console.log("socket.on disconnect. userId :", userId, "socketId[userId] :", socketId[userId]);
 
         delete socketId[userId];
-        console.log("socketId:", socketId);
+        console.log("new socketId :", socketId);
 
         db.setUserOnlineStatus(userId, false);
 
@@ -120,16 +121,15 @@ io.on("connection", async (socket) => {
 
     // 2. listen for a new message event
     socket.on("sendMessage", async (message) => {
-        console.log("NEW MESSAGE", message);
+        console.log("socket.on sendMessage. message :", message);
+
         const { chatId, text } = message;
 
         try {
             const messageId = await db.addMessage(userId, chatId, text);
             const messageData = await db.getMessage(messageId[0].id);
 
-            messageData[0].created_at = messageData[0].created_at
-                .toString()
-                .split(" GMT")[0];
+            messageData[0].created_at = messageData[0].created_at.toString().split(" GMT")[0];
 
             if (messageData[0].receiver_id === 0) {
                 io.emit("newMessage", messageData[0]); // if it's a message to the global chat, send to everyone
@@ -155,15 +155,13 @@ app.use(compression());
 // ROUTES
 // Get user id from cookie
 app.get("/user/id.json", (req, res) => {
-    console.log("req.session :", req.session);
+    console.log("app.get /user/id.json. req.session :", req.session);
     const id = req.session.id;
 
     if (id) {
         db.getUserById(id)
             .then((data) => {
-                data[0].created_at = data[0].created_at
-                    .toString()
-                    .split(" GMT")[0];
+                data[0].created_at = data[0].created_at.toString().split(" GMT")[0];
 
                 res.json(data[0]);
             })
@@ -179,8 +177,7 @@ app.get("/user/id.json", (req, res) => {
 
 // REGISTRATION
 app.post("/registration", (req, res) => {
-    // console.log("req :", req);
-    console.log("REGISTRATION. req.body :", req.body);
+    console.log("app.post /registration. req.body :", req.body);
 
     const { username, email, password } = req.body;
 
@@ -228,13 +225,13 @@ app.post("/registration", (req, res) => {
                 success: false,
                 message: "Error during registration!",
             });
-            console.log(error);
+            console.log("app.post /registration. error :", error);
         });
 });
 
 // Log in
 app.post("/login", (req, res) => {
-    // console.log("LOG IN. req.body:", req.body);
+    console.log("app.post /login. req.body :", req.body);
 
     const { email, password } = req.body;
 
@@ -250,9 +247,7 @@ app.post("/login", (req, res) => {
 
                         delete data[0].password;
 
-                        data[0].created_at = data[0].created_at
-                            .toString()
-                            .split(" GMT")[0];
+                        data[0].created_at = data[0].created_at.toString().split(" GMT")[0];
 
                         res.json({
                             success: true,
@@ -277,13 +272,14 @@ app.post("/login", (req, res) => {
                 success: false,
                 message: "Error logging in!",
             });
-            console.log(error);
+            console.log("app.post /login. error :", error);
         });
 });
 
 // get user data (own or other)
 app.get("/user/:id.json", (req, res) => {
-    // console.log("GET USER. id :", req.params.id);
+    console.log("app.get /user/:id.json. req.params.id :", req.params.id);
+
     let userId;
 
     if (req.params.id == 0) {
@@ -292,10 +288,7 @@ app.get("/user/:id.json", (req, res) => {
         userId = req.params.id; // if 'id' is another number, it comes from OtherUserPage and wants somoene else's data
     }
 
-    Promise.all([
-        db.getUserById(userId),
-        db.getFriendships(userId) /*, db.getAllPostsByUserId(userId)*/,
-    ])
+    Promise.all([db.getUserById(userId), db.getFriendships(userId) /*, db.getAllPostsByUserId(userId)*/])
         .then((data) => {
             // console.log("promiseall data :", data); // data[0] is user data. data[1] is friends data
             const pendingRequests = data[1].some((obj) => obj.status == false);
@@ -309,9 +302,7 @@ app.get("/user/:id.json", (req, res) => {
 
             delete data[0][0].password; // caution! Password must be deleted from data before sending it to client!
 
-            data[0][0].created_at = data[0][0].created_at
-                .toString()
-                .split(" GMT")[0]; // We can change the format of the date here
+            data[0][0].created_at = data[0][0].created_at.toString().split(" GMT")[0]; // We can change the format of the date here
 
             // data[2].forEach((element) => {
             //     element.created_at = element.created_at.toString().split(" GMT")[0];
@@ -326,13 +317,14 @@ app.get("/user/:id.json", (req, res) => {
 
 // Log out
 app.get("/logout", (req, res) => {
+    console.log("app.get /logout. req.session.id :", req.session.id);
     req.session = null;
     res.redirect("/");
 });
 
 // Reset password
 app.post("/getcode", (req, res) => {
-    // console.log("GET CODE. req.body:", req.body);
+    console.log("app.post /getcode. req.body :", req.body);
 
     const { email } = req.body;
 
@@ -376,7 +368,7 @@ app.post("/getcode", (req, res) => {
 });
 
 app.post("/resetpassword", (req, res) => {
-    // console.log("RESET PASSWORD req.body :", req.body);
+    console.log("app.post /resetpassword req.body :", req.body);
 
     db.checkCode(req.body.email)
         .then((data) => {
@@ -494,13 +486,7 @@ app.post("/profile", uploader.single("file"), (req, res) => {
                 });
 
                 // put data in database
-                return db.updateProfileAndPic(
-                    id,
-                    username,
-                    email,
-                    bio,
-                    picture
-                );
+                return db.updateProfileAndPic(id, username, email, bio, picture);
             } else {
                 return db.updateProfile(id, username, email, bio);
             }
@@ -579,11 +565,7 @@ app.post("/deletecheckcode", (req, res) => {
                 if (code === data[0].code) {
                     // Delete account, codes, friends and messages
                     // promise all
-                    Promise.all([
-                        db.deleteMessages(id),
-                        db.deleteRequests(id),
-                        db.deleteCodes(email),
-                    ])
+                    Promise.all([db.deleteMessages(id), db.deleteRequests(id), db.deleteCodes(email)])
                         .then(() => {
                             return db.deleteAccount(id, email);
                         })
@@ -596,8 +578,7 @@ app.post("/deletecheckcode", (req, res) => {
                         .catch((error) => {
                             res.json({
                                 success: false,
-                                message:
-                                    "Server error! Please contact tech support.",
+                                message: "Server error! Please contact tech support.",
                             });
                             console.log(error);
                         });
@@ -749,9 +730,7 @@ app.get("/messages/:id.json", (req, res) => {
         db.getMessagesGlobal(limit)
             .then((data) => {
                 data.forEach((element) => {
-                    element.created_at = element.created_at
-                        .toString()
-                        .split(" GMT")[0];
+                    element.created_at = element.created_at.toString().split(" GMT")[0];
                 });
 
                 res.json(data);
@@ -764,9 +743,7 @@ app.get("/messages/:id.json", (req, res) => {
         db.getMessages(user1, user2, limit)
             .then((data) => {
                 data.forEach((element) => {
-                    element.created_at = element.created_at
-                        .toString()
-                        .split(" GMT")[0];
+                    element.created_at = element.created_at.toString().split(" GMT")[0];
                 });
 
                 res.json(data);
@@ -785,9 +762,7 @@ app.get("/characters.json", (req, res) => {
     db.getAllCharacters(id)
         .then((data) => {
             data.forEach((element) => {
-                element.created_at = element.created_at
-                    .toString()
-                    .split(" GMT")[0];
+                element.created_at = element.created_at.toString().split(" GMT")[0];
             });
 
             res.json(data);
@@ -803,15 +778,7 @@ app.post("/newcharacter", uploader.single("file"), (req, res) => {
     // console.log("req.file :", req.file);
 
     const { id } = req.session;
-    const {
-        first_name,
-        last_name,
-        tribe,
-        role,
-        strength,
-        dexterity,
-        intellect,
-    } = req.body;
+    const { first_name, last_name, tribe, role, strength, dexterity, intellect } = req.body;
     const location = "tutorial";
 
     const { filename, mimetype, size, path } = req.file;
@@ -842,18 +809,7 @@ app.post("/newcharacter", uploader.single("file"), (req, res) => {
             });
 
             // put data in database
-            return db.createCharacter(
-                id,
-                first_name,
-                last_name,
-                image,
-                tribe,
-                role,
-                strength,
-                dexterity,
-                intellect,
-                location
-            );
+            return db.createCharacter(id, first_name, last_name, image, tribe, role, strength, dexterity, intellect, location);
         })
         .then((data) => {
             console.log("createCharacter data[0]:", data[0]);
@@ -875,7 +831,7 @@ app.use("/", proxy("localhost:5173"));
 
 // CATCH ALL
 app.get("*", function (req, res) {
-    // res.sendFile(path.join(__dirname, "..", "client", "index.html"));
+    res.json({ salutation: "hello!" });
 });
 
 // INITIALIZATION
