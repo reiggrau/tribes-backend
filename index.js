@@ -1,11 +1,8 @@
-// import express, { static as staticServe } from "express";
+// SETUP
 import express from "express";
 const app = express();
 import compression from "compression";
 import proxy from "express-http-proxy";
-
-// SETUP
-const PORT = process.env.PORT || 3001;
 
 // cookies
 import cookieSession from "cookie-session";
@@ -17,8 +14,10 @@ const cookieSessionMiddleware = cookieSession({
 });
 
 // .env
-import * as dotenv from "dotenv"; // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
+import * as dotenv from "dotenv";
 dotenv.config();
+
+const PORT = process.env.PORT || 3001;
 
 // Database
 import db from "./db.js";
@@ -35,7 +34,6 @@ import fs from "fs";
 
 /// AWS ///
 import aws from "aws-sdk";
-// import secrets from "./secrets.js";
 
 const s3 = new aws.S3({
     accessKeyId: process.env.AWS_KEY,
@@ -827,7 +825,7 @@ app.post("/newcharacter", uploader.single("file"), (req, res) => {
 });
 
 // proxy HTTP GET / POST
-app.use("/", proxy("localhost:5173"));
+app.use("/", proxy("localhost:" + PORT));
 
 // CATCH ALL
 app.get("*", function (req, res) {
