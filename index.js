@@ -835,7 +835,7 @@ app.post("/newcharacter", uploader.single("file"), (req, res) => {
 });
 
 // proxy HTTP GET / POST
-app.use("/", proxy("localhost:" + PORT));
+// app.use("/", proxy("localhost:" + PORT));
 
 // CATCH ALL
 app.get("*", function (req, res) {
@@ -844,5 +844,7 @@ app.get("*", function (req, res) {
 
 // INITIALIZATION
 server.listen(PORT, function () {
-    console.log("I'm listening on port :", PORT);
+    console.log("Server online!");
+    console.log("PORT :", PORT);
+    console.log("DATABASE_URL :", process.env.DATABASE_URL);
 });
