@@ -1,8 +1,16 @@
 // SETUP
+// express
 import express from "express";
 const app = express();
+import http from "http";
+const server = http.createServer(app);
+
+// socket.io
+import { Server } from "socket.io";
+const io = new Server(server);
+
 import compression from "compression";
-import proxy from "express-http-proxy";
+// import proxy from "express-http-proxy";
 
 // cookies
 import cookieSession from "cookie-session";
@@ -40,11 +48,6 @@ const s3 = new aws.S3({
     secretAccessKey: process.env.AWS_SECRET,
 });
 
-// socket.io
-import http from "http";
-const server = http.createServer(app);
-import { Server } from "socket.io";
-
 // CORS
 import cors from "cors";
 const corsOptions = {
@@ -55,76 +58,81 @@ const corsOptions = {
 
 app.use(cors(corsOptions)); // Use this after the variable declaration
 
-const io = new Server(server);
-
-// const server = require("http").Server(app);
-
-// const io = require("socket.io")(server, {
-//     allowRequest: (req, callback) => {
-//         callback(null, req.headers.referer.startsWith("http://localhost:3000"));
-//     },
-// });
-
-// allow socket.io to use cookie session
-io.use((socket, next) => {
-    cookieSessionMiddleware(socket.request, socket.request.res, next);
-});
-
-// store user.id-socket.id pairs
-const socketId = {};
+// SERVER VARIABLES
+const userIdSocketIdObj = {}; // store user.id-socket.id pairs
 
 // io
+io.use((socket, next) => {
+    cookieSessionMiddleware(socket.request, socket.request.res, next);
+}); // allow socket.io to use cookie session
+
 io.on("connection", async (socket) => {
-    const userId = socket.request.session.id;
-    socketId[userId] = socket.id;
+    const socketId = socket.id;
+    console.log("io.on connection. socketId :", socketId);
 
-    console.log("io.on connection. userId:", userId, "socketId :", socketId[userId]);
-    console.log("new socketId:", socketId);
+    let userId;
 
-    // MIDDLEWARE
-    app.use(express.json()); // This is needed to read the req.body
+    socket.on("disconnect", async () => {
+        console.log("socket.on disconnect. userId :", userId, "socket.id :", socket.id);
 
-    app.use(cookieSessionMiddleware);
-
-    app.use(compression());
-
-    // app.use(staticServe("public"));
-
-    db.setUserOnlineStatus(userId, true); // Update online status
-
-    db.getFriendsId(userId).then((data) => {
-        console.log("getFriendsId data :", data);
-
-        for (const element of data) {
-            const friendId = element.id;
-            if (Object.prototype.hasOwnProperty.call(socketId, friendId)) {
-                io.to(socketId[friendId]).emit("friendOnline", userId);
-            }
+        if (userId) {
+            socketDisconnect(); // sets user online status to false in DB, then gets friend IDs from DB and sends each of them, if online, the friendOffline event
         }
     });
 
-    // db.getFriendships;
-
-    if (!userId) {
-        return socket.disconnect(true);
-    }
-
-    socket.on("disconnect", function () {
-        console.log("socket.on disconnect. userId :", userId, "socketId[userId] :", socketId[userId]);
-
-        delete socketId[userId];
-        console.log("new socketId :", socketId);
+    function socketDisconnect() {
+        delete userIdSocketIdObj[userId];
+        console.log("new userIdSocketIdObj :", userIdSocketIdObj);
 
         db.setUserOnlineStatus(userId, false);
+        console.log("db.setUserOnlineStatus. userId :", userId, "online :", false);
 
         db.getFriendsId(userId).then((data) => {
+            console.log("getFriendsId data :", data);
             for (const element of data) {
                 const friendId = element.id;
-                if (Object.prototype.hasOwnProperty.call(socketId, friendId)) {
-                    io.to(socketId[friendId]).emit("friendOffline", userId);
+                if (Object.prototype.hasOwnProperty.call(userIdSocketIdObj, friendId)) {
+                    console.log("io.to friendOffline. friendId :", friendId);
+                    io.to(userIdSocketIdObj[friendId]).emit("friendOffline", userId);
                 }
             }
         });
+    }
+
+    // MIDDLEWARE
+    // app.use(express.json()); // This is needed to read the req.body
+    // app.use(cookieSessionMiddleware);
+    // app.use(compression());
+
+    // app.use(staticServe("public"));
+
+    socket.on("login", async (id) => {
+        userId = id;
+        console.log("socket.on login. userId:", userId, "socketId :", socketId);
+
+        userIdSocketIdObj[userId] = socketId;
+        console.log("new userIdSocketIdObj object:", userIdSocketIdObj);
+
+        db.setUserOnlineStatus(userId, true); // Update online status of user
+        console.log("db.setUserOnlineStatus. userId :", userId, "online :", true);
+
+        db.getFriendsId(userId).then((data) => {
+            console.log("getFriendsId data :", data);
+
+            for (const element of data) {
+                const friendId = element.id;
+                if (Object.prototype.hasOwnProperty.call(userIdSocketIdObj, friendId)) {
+                    console.log("io.to friendOnline. friendId :", friendId);
+                    io.to(userIdSocketIdObj[friendId]).emit("friendOnline", userId);
+                }
+            }
+        }); // Get friends IDs from DB and send them the friendOnline event
+    });
+
+    socket.on("logout", async () => {
+        console.log("socket.on logout. userId :", userId, "socket.id :", socket.id);
+
+        socketDisconnect();
     });
 
     // 2. listen for a new message event
@@ -142,8 +150,8 @@ io.on("connection", async (socket) => {
             if (messageData[0].receiver_id === 0) {
                 io.emit("newMessage", messageData[0]); // if it's a message to the global chat, send to everyone
             } else {
-                io.to(socketId[userId]).emit("newMessage", messageData[0]);
-                io.to(socketId[chatId]).emit("newMessage", messageData[0]);
+                io.to(userIdSocketIdObj[userId]).emit("newMessage", messageData[0]);
+                io.to(userIdSocketIdObj[chatId]).emit("newMessage", messageData[0]);
             }
         } catch (error) {
             console.error(error);
@@ -305,7 +313,7 @@ app.get("/user/:id.json", (req, res) => {
 
             if (pendingRequests && req.params.id == 0) {
                 console.log("newRequests!");
-                io.to(socketId[userId]).emit("newRequestUpdate", true);
+                io.to(userIdSocketIdObj[userId]).emit("newRequestUpdate", true);
             }
 
             delete data[0][0].password; // caution! Password must be deleted from data before sending it to client!
@@ -424,7 +432,7 @@ app.post("/resetpassword", (req, res) => {
 
 // Edit profile
 app.post("/profile", uploader.single("file"), (req, res) => {
-    // console.log("EDIT PROFILE. req.body :", req.body);
+    console.log("app.post /profile. req.body :", req.body);
     // console.log("req.file :", req.file);
 
     const { id } = req.session;
@@ -516,7 +524,7 @@ app.post("/profile", uploader.single("file"), (req, res) => {
 
 // DELETE ACCOUNT
 app.post("/deletegetcode", (req, res) => {
-    // console.log("DELETE GET CODE. req.body:", req.body);
+    console.log("app.post /deletegetcode. req.body:", req.body);
 
     const { email, password } = req.body;
 
@@ -563,7 +571,7 @@ app.post("/deletegetcode", (req, res) => {
 });
 
 app.post("/deletecheckcode", (req, res) => {
-    console.log("DELETE CHECK CODE req.body:", req.body);
+    console.log("app.post /deletecheckcode req.body:", req.body);
     const id = req.session.id;
     const { email, code } = req.body;
 
@@ -614,7 +622,7 @@ app.post("/deletecheckcode", (req, res) => {
 
 // SEARCH USER
 app.post("/searchuser", (req, res) => {
-    // console.log("SEARCH USER. req.body :", req.body);
+    console.log("app.post /searchuser. req.body :", req.body);
 
     const searchString = req.body.searchString;
 
@@ -630,7 +638,7 @@ app.post("/searchuser", (req, res) => {
 // FRIEND BUTTON
 // get user friend status
 app.get("/status/:id.json", (req, res) => {
-    // console.log("GET USER STATUS. id1, id2 :", req.session.id, req.params.id);
+    console.log("app.get /status/:id. id1, id2 :", req.session.id, req.params.id);
 
     const id1 = req.session.id;
     const id2 = req.params.id;
@@ -658,7 +666,7 @@ app.get("/status/:id.json", (req, res) => {
 
 // make friendship request
 app.get("/befriend/:id.json", (req, res) => {
-    // console.log("BEFRIEND. id1, id2 :", req.session.id, req.params.id);
+    console.log("app.get /befriend/:id. id1, id2 :", req.session.id, req.params.id);
 
     const id1 = req.session.id;
     const id2 = req.params.id;
@@ -671,8 +679,8 @@ app.get("/befriend/:id.json", (req, res) => {
         .then((data) => {
             // console.log("askFriendship data :", data);
 
-            if (Object.prototype.hasOwnProperty.call(socketId, id2)) {
-                io.to(socketId[id2]).emit("newRequestUpdate", true);
+            if (Object.prototype.hasOwnProperty.call(userIdSocketIdObj, id2)) {
+                io.to(userIdSocketIdObj[id2]).emit("newRequestUpdate", true);
             }
 
             res.json(data[0]);
@@ -684,7 +692,7 @@ app.get("/befriend/:id.json", (req, res) => {
 
 // cancel friendship request
 app.get("/cancel/:id.json", (req, res) => {
-    // console.log("CANCEL. id1, id2 :", req.session.id, req.params.id);
+    console.log("app.get /cancel/:id. id1, id2 :", req.session.id, req.params.id);
 
     const id1 = req.session.id;
     const id2 = req.params.id;
@@ -706,7 +714,7 @@ app.get("/cancel/:id.json", (req, res) => {
 
 // accept friendship request
 app.get("/accept/:id.json", (req, res) => {
-    // console.log("ACCEPT. id1, id2 :", req.session.id, req.params.id);
+    console.log("app.get /accept/:id. id1, id2 :", req.session.id, req.params.id);
 
     const id1 = req.session.id;
     const id2 = req.params.id;
@@ -729,12 +737,13 @@ app.get("/accept/:id.json", (req, res) => {
 // CHAT
 // get messages
 app.get("/messages/:id.json", (req, res) => {
+    console.log("app.get /messages/:id. id2:", req.params.id);
+
     const user1 = req.session.id;
     const user2 = req.params.id;
     const limit = 10;
 
     if (user2 == 0) {
-        // console.log("GET MESSAGES GLOBAL. id2:", user2);
         db.getMessagesGlobal(limit)
             .then((data) => {
                 data.forEach((element) => {
@@ -747,7 +756,6 @@ app.get("/messages/:id.json", (req, res) => {
                 console.log(error);
             });
     } else {
-        // console.log("GET MESSAGES. id1:", user1, "id2:", user2);
         db.getMessages(user1, user2, limit)
             .then((data) => {
                 data.forEach((element) => {
@@ -764,10 +772,10 @@ app.get("/messages/:id.json", (req, res) => {
 
 // CHARACTERS
 app.get("/characters.json", (req, res) => {
-    const id = req.session.id;
-    console.log("GET CHARACTERS. id:", id);
+    const userId = req.session.id;
+    console.log("app.get /characters. userId:", userId);
 
-    db.getAllCharacters(id)
+    db.getAllCharacters(userId)
         .then((data) => {
             data.forEach((element) => {
                 element.created_at = element.created_at.toString().split(" GMT")[0];
@@ -782,7 +790,7 @@ app.get("/characters.json", (req, res) => {
 
 // new character
 app.post("/newcharacter", uploader.single("file"), (req, res) => {
-    // console.log("EDIT PROFILE. req.body :", req.body);
+    console.log("app.post /newcharacter. req.body :", req.body);
     // console.log("req.file :", req.file);
 
     const { id } = req.session;
