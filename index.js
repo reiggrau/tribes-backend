@@ -7,7 +7,23 @@ const server = http.createServer(app);
 
 // socket.io
 import { Server } from "socket.io";
-const io = new Server(server);
+// const io = new Server(server, {
+//     cors: {
+//         origin: "https://example.com",
+//     },
+// });
+
+const isDeployed = true; // Change this to boolean 'true' before deploying
+
+const originUrl = isDeployed ? "https://tribes-the-game.onrender.com" : "http://localhost:3000";
+
+const io = new Server(server, {
+    cors: {
+        origin: originUrl,
+        allowedHeaders: ["my-custom-header"],
+        credentials: true,
+    },
+});
 
 import compression from "compression";
 // import proxy from "express-http-proxy";
@@ -142,8 +158,13 @@ io.on("connection", async (socket) => {
         const { chatId, text } = message;
 
         try {
+            console.log("userId :", userId, "chatId :", chatId, "text :", text);
+
             const messageId = await db.addMessage(userId, chatId, text);
+            console.log("messageId :", messageId);
+
             const messageData = await db.getMessage(messageId[0].id);
+            console.log("messageData :", messageData);
 
             messageData[0].created_at = messageData[0].created_at.toString().split(" GMT")[0];
 
@@ -306,23 +327,17 @@ app.get("/user/:id.json", (req, res) => {
 
     Promise.all([db.getUserById(userId), db.getFriendships(userId) /*, db.getAllPostsByUserId(userId)*/])
         .then((data) => {
-            // console.log("promiseall data :", data); // data[0] is user data. data[1] is friends data
+            console.log("Promise.all userId :", userId, "db.getUserById(userId) data[0] :", data[0], "db.getFriendships(userId) data[1]:", data[1]); // data[0] is user data. data[1] is friendships data
             const pendingRequests = data[1].some((obj) => obj.status == false);
 
-            // console.log("pendingRequests :", pendingRequests);
-
             if (pendingRequests && req.params.id == 0) {
-                console.log("newRequests!");
+                console.log("pendingRequests :", pendingRequests);
                 io.to(userIdSocketIdObj[userId]).emit("newRequestUpdate", true);
             }
 
             delete data[0][0].password; // caution! Password must be deleted from data before sending it to client!
 
             data[0][0].created_at = data[0][0].created_at.toString().split(" GMT")[0]; // We can change the format of the date here
-
-            // data[2].forEach((element) => {
-            //     element.created_at = element.created_at.toString().split(" GMT")[0];
-            // });
 
             res.json(data);
         })
@@ -855,4 +870,5 @@ server.listen(PORT, function () {
     console.log("Server online!");
     console.log("PORT :", PORT);
     console.log("DATABASE_URL :", process.env.DATABASE_URL);
+    console.log("originUrl :", originUrl);
 });
