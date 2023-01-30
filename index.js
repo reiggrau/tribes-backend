@@ -75,8 +75,12 @@ app.use(cors(corsOptions)); // Use this after the variable declaration
 // SERVER VARIABLES
 const userIdSocketIdObj = {}; // store user.id-socket.id pairs
 
-// TESTING
+// MIDDLEWARE
+app.use(express.json()); // This is needed to read the req.body
+
 app.use(cookieSessionMiddleware);
+
+app.use(compression());
 
 // io
 io.use((socket, next) => {
@@ -182,11 +186,11 @@ io.on("connection", async (socket) => {
 });
 
 // MIDDLEWARE
-app.use(express.json()); // This is needed to read the req.body
+// app.use(express.json()); // This is needed to read the req.body
 
 // app.use(cookieSessionMiddleware);
 
-app.use(compression());
+// app.use(compression());
 
 // app.use(staticServe("public"));
 
