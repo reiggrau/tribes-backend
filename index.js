@@ -1,19 +1,15 @@
 // SETUP
+const isDeployed = true; // Change this to boolean 'true' before deploying
+
 // express
 import express from "express";
-const app = express();
 import http from "http";
+
+const app = express();
 const server = http.createServer(app);
 
 // socket.io
 import { Server } from "socket.io";
-// const io = new Server(server, {
-//     cors: {
-//         origin: "https://example.com",
-//     },
-// });
-
-const isDeployed = true; // Change this to boolean 'true' before deploying
 
 const originUrl = isDeployed ? "https://tribes-the-game.onrender.com" : "http://localhost:3000";
 
@@ -25,8 +21,8 @@ const io = new Server(server, {
     },
 });
 
+// compression
 import compression from "compression";
-// import proxy from "express-http-proxy";
 
 // cookies
 import cookieSession from "cookie-session";
@@ -47,17 +43,17 @@ const PORT = process.env.PORT || 3001;
 // Database
 import db from "./db.js";
 
-// Encryption
+// Password encryption
 import bcrypt from "bcryptjs";
 
-// Code
+// Reset email code
 import cryptoRandomString from "crypto-random-string";
 
 // Image upload
 import uploader from "./uploader.js";
 import fs from "fs";
 
-/// AWS ///
+/// AWS
 import aws from "aws-sdk";
 
 const s3 = new aws.S3({
@@ -67,6 +63,7 @@ const s3 = new aws.S3({
 
 // CORS
 import cors from "cors";
+
 const corsOptions = {
     origin: "*",
     credentials: true, //access-control-allow-credentials:true
@@ -77,6 +74,9 @@ app.use(cors(corsOptions)); // Use this after the variable declaration
 
 // SERVER VARIABLES
 const userIdSocketIdObj = {}; // store user.id-socket.id pairs
+
+// TESTING
+app.use(cookieSessionMiddleware);
 
 // io
 io.use((socket, next) => {
@@ -184,7 +184,7 @@ io.on("connection", async (socket) => {
 // MIDDLEWARE
 app.use(express.json()); // This is needed to read the req.body
 
-app.use(cookieSessionMiddleware);
+// app.use(cookieSessionMiddleware);
 
 app.use(compression());
 
