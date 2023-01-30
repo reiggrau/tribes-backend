@@ -193,10 +193,10 @@ app.use(compression());
 // Get user id from cookie
 app.get("/user/id.json", (req, res) => {
     console.log("app.get /user/id.json. req.session :", req.session);
-    const id = req.session.id;
+    const userId = req.session.id;
 
-    if (id) {
-        db.getUserById(id)
+    if (userId) {
+        db.getUserById(userId)
             .then((data) => {
                 data[0].created_at = data[0].created_at.toString().split(" GMT")[0];
 
@@ -247,15 +247,15 @@ app.post("/registration", (req, res) => {
             return db.createUser(username, email, hash);
         })
         .then((data) => {
-            // Store user data as cookie, and send data to client
-            req.session.id = data[0].id;
+            req.session.id = data[0].id; // Store user data as cookie
+            console.log("req.session.id :", req.session.id);
 
-            data[0].created_at = data[0].created_at.toString().split(" GMT")[0]; // We can change the format of the date here
+            data[0].created_at = data[0].created_at.toString().split(" GMT")[0]; // Here we can change the format of the dates
 
             res.json({
                 success: true,
                 user: data[0],
-            });
+            }); // send data to client
         })
         .catch((error) => {
             res.json({
@@ -279,10 +279,10 @@ app.post("/login", (req, res) => {
                 // Compare passwords
                 bcrypt.compare(password, data[0].password).then((match) => {
                     if (match) {
-                        // Store user id to cookie
-                        req.session.id = data[0].id;
+                        req.session.id = data[0].id; // Store user id to cookie
+                        console.log("req.session.id :", req.session.id);
 
-                        delete data[0].password;
+                        delete data[0].password; // Delete password from object before sending to client
 
                         data[0].created_at = data[0].created_at.toString().split(" GMT")[0];
 
@@ -315,7 +315,7 @@ app.post("/login", (req, res) => {
 
 // get user data (own or other)
 app.get("/user/:id.json", (req, res) => {
-    console.log("app.get /user/:id.json. req.params.id :", req.params.id);
+    console.log("app.get /user/:id.json. req.params.id :", req.params.id, "req.session.id :", req.session.id);
 
     let userId;
 
@@ -350,6 +350,7 @@ app.get("/user/:id.json", (req, res) => {
 app.get("/logout", (req, res) => {
     console.log("app.get /logout. req.session.id :", req.session.id);
     req.session = null;
+    console.log("req.session (after logout) :", req.session);
     res.redirect("/");
 });
 
