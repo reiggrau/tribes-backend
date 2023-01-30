@@ -32,9 +32,10 @@ import compression from "compression";
 import cookieSession from "cookie-session";
 
 const cookieSessionMiddleware = cookieSession({
+    name: "session",
     secret: process.env.SESSION_SECRET,
     maxAge: 1000 * 60 * 60 * 24 * 1, // miliseconds * seconds * minutes * hours * days // currently: 1 day
-    sameSite: true,
+    // sameSite: true,
 });
 
 // .env
