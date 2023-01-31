@@ -22,7 +22,7 @@ import cookieSession from "cookie-session";
 
 const cookieSessionMiddleware = cookieSession({
     name: "session",
-    // secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET,
     keys: [process.env.SESSION_SECRET],
     maxAge: 1000 * 60 * 60 * 24 * 1, // miliseconds * seconds * minutes * hours * days // currently: 1 day
     secure: true,
@@ -78,9 +78,9 @@ app.use(cors(corsOptions)); // Use this after the variable declaration
 const userIdSocketIdObj = {}; // store user.id-socket.id pairs
 
 // socket.io MIDDLEWARES
-io.use((socket, next) => {
-    cookieSessionMiddleware(socket.request, socket.request.res, next);
-}); // allow socket.io to use cookie session
+// io.use((socket, next) => {
+//     cookieSessionMiddleware(socket.request, socket.request.res, next);
+// }); // allow socket.io to use cookie session
 
 // socket.io
 io.on("connection", async (socket) => {
@@ -859,6 +859,7 @@ app.post("/newcharacter", uploader.single("file"), (req, res) => {
 
 // CATCH ALL
 app.get("*", function (req, res) {
+    console.log("catch all");
     res.json({ salutation: "hello!" });
 });
 
