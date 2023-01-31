@@ -8,32 +8,6 @@ import http from "http";
 const app = express();
 const server = http.createServer(app);
 
-// socket.io
-import { Server } from "socket.io";
-
-const originUrl = isDeployed ? "https://tribes-the-game.onrender.com" : "http://localhost:3000";
-
-const io = new Server(server, {
-    cors: {
-        origin: originUrl,
-        allowedHeaders: ["my-custom-header"],
-        credentials: true,
-    },
-});
-
-// compression
-import compression from "compression";
-
-// cookies
-import cookieSession from "cookie-session";
-
-const cookieSessionMiddleware = cookieSession({
-    name: "session",
-    secret: process.env.SESSION_SECRET,
-    maxAge: 1000 * 60 * 60 * 24 * 1, // miliseconds * seconds * minutes * hours * days // currently: 1 day
-    // sameSite: true,
-});
-
 // .env
 import * as dotenv from "dotenv";
 dotenv.config();
@@ -42,6 +16,17 @@ const PORT = process.env.PORT || 3001;
 
 // Database
 import db from "./db.js";
+
+// cookie-session
+import cookieSession from "cookie-session";
+
+const cookieSessionMiddleware = cookieSession({
+    name: "session",
+    secret: process.env.SESSION_SECRET,
+    maxAge: 1000 * 60 * 60 * 24 * 1, // miliseconds * seconds * minutes * hours * days // currently: 1 day
+    secure: true,
+    sameSite: "none",
+});
 
 // Password encryption
 import bcrypt from "bcryptjs";
@@ -53,12 +38,28 @@ import cryptoRandomString from "crypto-random-string";
 import uploader from "./uploader.js";
 import fs from "fs";
 
+// compression
+import compression from "compression";
+
 /// AWS
 import aws from "aws-sdk";
 
 const s3 = new aws.S3({
     accessKeyId: process.env.AWS_KEY,
     secretAccessKey: process.env.AWS_SECRET,
+});
+
+// socket.io
+import { Server } from "socket.io";
+
+const originUrl = isDeployed ? "https://tribes-the-game.onrender.com" : "http://localhost:3000";
+
+const io = new Server(server, {
+    cors: {
+        origin: originUrl,
+        allowedHeaders: ["my-custom-header"],
+        credentials: true,
+    },
 });
 
 // CORS
@@ -75,18 +76,12 @@ app.use(cors(corsOptions)); // Use this after the variable declaration
 // SERVER VARIABLES
 const userIdSocketIdObj = {}; // store user.id-socket.id pairs
 
-// MIDDLEWARE
-app.use(express.json()); // This is needed to read the req.body
-
-app.use(cookieSessionMiddleware);
-
-app.use(compression());
-
-// io
+// socket.io MIDDLEWARES
 io.use((socket, next) => {
     cookieSessionMiddleware(socket.request, socket.request.res, next);
 }); // allow socket.io to use cookie session
 
+// socket.io
 io.on("connection", async (socket) => {
     const socketId = socket.id;
     console.log("io.on connection. socketId :", socketId);
@@ -119,13 +114,6 @@ io.on("connection", async (socket) => {
             }
         });
     }
-
-    // MIDDLEWARE
-    // app.use(express.json()); // This is needed to read the req.body
-    // app.use(cookieSessionMiddleware);
-    // app.use(compression());
-
-    // app.use(staticServe("public"));
 
     socket.on("login", async (id) => {
         userId = id;
@@ -186,11 +174,16 @@ io.on("connection", async (socket) => {
 });
 
 // MIDDLEWARE
-// app.use(express.json()); // This is needed to read the req.body
+app.use(express.json()); // This is needed to read the req.body
 
-// app.use(cookieSessionMiddleware);
+app.use(cookieSessionMiddleware);
 
-// app.use(compression());
+app.use((req, res, next) => {
+    req.session.secure = true;
+    next();
+}); // enable the "secure" flag on the session object
+
+app.use(compression());
 
 // app.use(staticServe("public"));
 
