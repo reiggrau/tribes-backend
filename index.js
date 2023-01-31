@@ -176,6 +176,8 @@ io.on("connection", async (socket) => {
 // MIDDLEWARE
 app.use(express.json()); // This is needed to read the req.body
 
+app.set("trust proxy", 1);
+
 app.use(cookieSessionMiddleware);
 
 app.use((req, res, next) => {
@@ -751,7 +753,7 @@ app.get("/accept/:id.json", (req, res) => {
 // CHAT
 // get messages
 app.get("/messages/:id.json", (req, res) => {
-    console.log("app.get /messages/:id. id2:", req.params.id);
+    console.log("app.get /messages/:id. req.session.id:", req.session.id, "id2:", req.params.id);
 
     const user1 = req.session.id;
     const user2 = req.params.id;
