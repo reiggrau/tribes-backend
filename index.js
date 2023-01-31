@@ -77,10 +77,21 @@ app.use(cors(corsOptions)); // Use this after the variable declaration
 // SERVER VARIABLES
 const userIdSocketIdObj = {}; // store user.id-socket.id pairs
 
+// MIDDLEWARE
+app.use(express.json()); // This is needed to read the req.body
+
+app.set("trust proxy", 1);
+
+app.use(cookieSessionMiddleware);
+
+app.use(compression());
+
+// app.use(staticServe("public"));
+
 // socket.io MIDDLEWARES
-// io.use((socket, next) => {
-//     cookieSessionMiddleware(socket.request, socket.request.res, next);
-// }); // allow socket.io to use cookie session
+io.use((socket, next) => {
+    cookieSessionMiddleware(socket.request, socket.request.res, next);
+}); // allow socket.io to use cookie session
 
 // socket.io
 io.on("connection", async (socket) => {
@@ -173,17 +184,6 @@ io.on("connection", async (socket) => {
         }
     });
 });
-
-// MIDDLEWARE
-app.use(express.json()); // This is needed to read the req.body
-
-app.set("trust proxy", 1);
-
-app.use(cookieSessionMiddleware);
-
-app.use(compression());
-
-// app.use(staticServe("public"));
 
 // ROUTES
 // Get user id from cookie
