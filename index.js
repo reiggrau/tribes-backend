@@ -177,7 +177,7 @@ io.on("connection", async (socket) => {
 // MIDDLEWARE
 app.use(express.json()); // This is needed to read the req.body
 
-app.set("trust proxy", 1);
+// app.set("trust proxy", 1);
 
 app.use(cookieSessionMiddleware);
 
