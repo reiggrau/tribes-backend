@@ -180,11 +180,6 @@ app.set("trust proxy", 1);
 
 app.use(cookieSessionMiddleware);
 
-app.use((req, res, next) => {
-    req.session.secure = true;
-    next();
-}); // enable the "secure" flag on the session object
-
 app.use(compression());
 
 // app.use(staticServe("public"));
