@@ -449,7 +449,7 @@ app.post("/profile", uploader.single("file"), (req, res) => {
     console.log("app.post /profile. req.body :", req.body);
     // console.log("req.file :", req.file);
 
-    const { id } = req.session;
+    const { id } = req.session || req.body.id;
     const { username, email, bio } = req.body;
 
     // Check if email already exists
@@ -586,7 +586,7 @@ app.post("/deletegetcode", (req, res) => {
 
 app.post("/deletecheckcode", (req, res) => {
     console.log("app.post /deletecheckcode req.body:", req.body);
-    const id = req.session.id;
+    const id = req.session.id || req.body.id;
     const { email, code } = req.body;
 
     db.checkCode(email)
@@ -651,11 +651,11 @@ app.post("/searchuser", (req, res) => {
 
 // FRIEND BUTTON
 // get user friend status
-app.get("/status/:id.json", (req, res) => {
-    console.log("app.get /status/:id. id1, id2 :", req.session.id, req.params.id);
+app.get("/status/:id/:friend.json", (req, res) => {
+    console.log("app.get /status/:id/:friend. id1, id2 :", req.params.id, req.params.friend);
 
-    const id1 = req.session.id;
-    const id2 = req.params.id;
+    const id1 = req.session.id || req.params.id;
+    const id2 = req.params.friend;
 
     if (id1 == id2) {
         res.json({
@@ -680,10 +680,10 @@ app.get("/status/:id.json", (req, res) => {
 
 // make friendship request
 app.get("/befriend/:id.json", (req, res) => {
-    console.log("app.get /befriend/:id. id1, id2 :", req.session.id, req.params.id);
+    console.log("app.get /befriend/:id/:friend. id1, id2 :", req.params.id, req.params.friend);
 
-    const id1 = req.session.id;
-    const id2 = req.params.id;
+    const id1 = req.session.id || req.params.id;
+    const id2 = req.params.friend;
 
     if (id1 == id2) {
         res.redirect("/");
@@ -706,10 +706,10 @@ app.get("/befriend/:id.json", (req, res) => {
 
 // cancel friendship request
 app.get("/cancel/:id.json", (req, res) => {
-    console.log("app.get /cancel/:id. id1, id2 :", req.session.id, req.params.id);
+    console.log("app.get /cancel/:id/:friend. id1, id2 :", req.params.id, req.params.friend);
 
-    const id1 = req.session.id;
-    const id2 = req.params.id;
+    const id1 = req.session.id || req.params.id;
+    const id2 = req.params.friend;
 
     if (id1 == id2) {
         res.redirect("/");
@@ -728,10 +728,10 @@ app.get("/cancel/:id.json", (req, res) => {
 
 // accept friendship request
 app.get("/accept/:id.json", (req, res) => {
-    console.log("app.get /accept/:id. id1, id2 :", req.session.id, req.params.id);
+    console.log("app.get /accept/:id/:friend. id1, id2 :", req.params.id, req.params.friend);
 
-    const id1 = req.session.id;
-    const id2 = req.params.id;
+    const id1 = req.session.id || req.params.id;
+    const id2 = req.params.friend;
 
     if (id1 == id2) {
         res.redirect("/");
@@ -751,10 +751,10 @@ app.get("/accept/:id.json", (req, res) => {
 // CHAT
 // get messages
 app.get("/messages/:id.json", (req, res) => {
-    console.log("app.get /messages/:id. req.session.id:", req.session.id, "id2:", req.params.id);
+    console.log("app.get /messages/:id/:friend. id1, id2 :", req.params.id, req.params.friend);
 
-    const user1 = req.session.id;
-    const user2 = req.params.id;
+    const id1 = req.session.id || req.params.id;
+    const id2 = req.params.friend;
     const limit = 10;
 
     if (user2 == 0) {
@@ -785,9 +785,9 @@ app.get("/messages/:id.json", (req, res) => {
 });
 
 // CHARACTERS
-app.get("/characters.json", (req, res) => {
-    const userId = req.session.id;
-    console.log("app.get /characters. userId:", userId);
+app.get("/characters/:id.json", (req, res) => {
+    console.log("app.get /characters/:id. userId:", req.params.id);
+    const userId = req.session.id || req.params.id;
 
     db.getAllCharacters(userId)
         .then((data) => {
@@ -807,7 +807,7 @@ app.post("/newcharacter", uploader.single("file"), (req, res) => {
     console.log("app.post /newcharacter. req.body :", req.body);
     // console.log("req.file :", req.file);
 
-    const { id } = req.session;
+    const { id } = req.session || req.body;
     const { first_name, last_name, tribe, role, strength, dexterity, intellect } = req.body;
     const location = "tutorial";
 
