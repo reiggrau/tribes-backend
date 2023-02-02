@@ -753,8 +753,8 @@ app.get("/accept/:id.json", (req, res) => {
 app.get("/messages/:id/:friend.json", (req, res) => {
     console.log("app.get /messages/:id/:friend. id1, id2 :", req.params.id, req.params.friend);
 
-    const id1 = req.session.id || req.params.id;
-    const id2 = req.params.friend;
+    const user1 = req.session.id || req.params.id;
+    const user2 = req.params.friend;
     const limit = 10;
 
     if (user2 == 0) {
