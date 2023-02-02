@@ -750,7 +750,7 @@ app.get("/accept/:id.json", (req, res) => {
 
 // CHAT
 // get messages
-app.get("/messages/:id.json", (req, res) => {
+app.get("/messages/:id/:friend.json", (req, res) => {
     console.log("app.get /messages/:id/:friend. id1, id2 :", req.params.id, req.params.friend);
 
     const id1 = req.session.id || req.params.id;
