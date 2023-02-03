@@ -679,7 +679,7 @@ app.get("/status/:id/:friend.json", (req, res) => {
 });
 
 // make friendship request
-app.get("/befriend/:id.json", (req, res) => {
+app.get("/befriend/:id/:friend.json", (req, res) => {
     console.log("app.get /befriend/:id/:friend. id1, id2 :", req.params.id, req.params.friend);
 
     const id1 = req.session.id || req.params.id;
@@ -705,7 +705,7 @@ app.get("/befriend/:id.json", (req, res) => {
 });
 
 // cancel friendship request
-app.get("/cancel/:id.json", (req, res) => {
+app.get("/cancel/:id/:friend.json", (req, res) => {
     console.log("app.get /cancel/:id/:friend. id1, id2 :", req.params.id, req.params.friend);
 
     const id1 = req.session.id || req.params.id;
@@ -727,7 +727,7 @@ app.get("/cancel/:id.json", (req, res) => {
 });
 
 // accept friendship request
-app.get("/accept/:id.json", (req, res) => {
+app.get("/accept/:id/:friend.json", (req, res) => {
     console.log("app.get /accept/:id/:friend. id1, id2 :", req.params.id, req.params.friend);
 
     const id1 = req.session.id || req.params.id;
