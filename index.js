@@ -315,21 +315,21 @@ app.post("/login", (req, res) => {
 app.get("/user/:id.json", (req, res) => {
     console.log("app.get /user/:id.json. req.params.id :", req.params.id, "req.session.id :", req.session.id);
 
-    let userId;
+    let userId = req.params.id;
 
-    if (req.params.id == 0) {
-        userId = req.session.id; // if 'id' is 0 the request comes from own Home page and wants own user data
-    } else {
-        userId = req.params.id; // if 'id' is another number, it comes from OtherUserPage and wants somoene else's data
-    }
+    // if (req.params.id == 0) {
+    //     userId = req.session.id; // if 'id' is 0 the request comes from own Home page and wants own user data
+    // } else {
+    //     userId = req.params.id; // if 'id' is another number, it comes from OtherUserPage and wants somoene else's data
+    // }
 
     Promise.all([db.getUserById(userId), db.getFriendships(userId) /*, db.getAllPostsByUserId(userId)*/])
         .then((data) => {
             console.log("Promise.all userId :", userId, "db.getUserById(userId) data[0] :", data[0], "db.getFriendships(userId) data[1]:", data[1]); // data[0] is user data. data[1] is friendships data
-            const pendingRequests = data[1].some((obj) => obj.status == false);
+            const pendingRequests = data[1].some((obj) => obj.status === false);
+            console.log("pendingRequests :", pendingRequests);
 
-            if (pendingRequests && req.params.id == 0) {
-                console.log("pendingRequests :", pendingRequests);
+            if (pendingRequests) {
                 io.to(userIdSocketIdObj[userId]).emit("newRequestUpdate", true);
             }
 
