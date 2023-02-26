@@ -311,21 +311,18 @@ app.post("/login", (req, res) => {
         });
 });
 
-// get user data (own or other)
+// get own user data
 app.get("/user/:id.json", (req, res) => {
-    console.log("app.get /user/:id.json. req.params.id :", req.params.id, "req.session.id :", req.session.id);
+    console.log("app.get /user/:id.json. req.params.id :", req.params.id);
 
     let userId = req.params.id;
 
-    // if (req.params.id == 0) {
-    //     userId = req.session.id; // if 'id' is 0 the request comes from own Home page and wants own user data
-    // } else {
-    //     userId = req.params.id; // if 'id' is another number, it comes from OtherUserPage and wants somoene else's data
-    // }
-
     Promise.all([db.getUserById(userId), db.getFriendships(userId) /*, db.getAllPostsByUserId(userId)*/])
         .then((data) => {
+            delete data[0][0].password; // caution! Password must be deleted from data before sending it to client!
+
             console.log("Promise.all userId :", userId, "db.getUserById(userId) data[0] :", data[0], "db.getFriendships(userId) data[1]:", data[1]); // data[0] is user data. data[1] is friendships data
+
             const pendingRequests = data[1].some((obj) => obj.status === false);
             console.log("pendingRequests :", pendingRequests);
 
@@ -333,9 +330,26 @@ app.get("/user/:id.json", (req, res) => {
                 io.to(userIdSocketIdObj[userId]).emit("newRequestUpdate", true);
             }
 
-            delete data[0][0].password; // caution! Password must be deleted from data before sending it to client!
-
             data[0][0].created_at = data[0][0].created_at.toString().split(" GMT")[0]; // We can change the format of the date here
+
+            res.json(data);
+        })
+        .catch((error) => {
+            console.log(error);
+        });
+});
+
+// get other user data
+app.get("/otheruser/:id.json", (req, res) => {
+    console.log("app.get /otheruser/:id.json. req.params.id :", req.params.id);
+
+    let userId = req.params.id;
+
+    db.getUserById(userId)
+        .then((data) => {
+            delete data[0].password; // caution! Password must be deleted from data before sending it to client!
+
+            data[0].created_at = data[0].created_at.toString().split(" GMT")[0]; // We can change the format of the date here
 
             res.json(data);
         })
