@@ -821,7 +821,7 @@ app.post("/newcharacter", uploader.single("file"), (req, res) => {
     console.log("app.post /newcharacter. req.body :", req.body);
     // console.log("req.file :", req.file);
 
-    const { id } = req.session || req.body;
+    const user_id = req.body.id;
     const { first_name, last_name, tribe, role, strength, dexterity, intellect } = req.body;
     const location = "tutorial";
 
@@ -853,7 +853,7 @@ app.post("/newcharacter", uploader.single("file"), (req, res) => {
             });
 
             // put data in database
-            return db.createCharacter(id, first_name, last_name, image, tribe, role, strength, dexterity, intellect, location);
+            return db.createCharacter(user_id, first_name, last_name, image, tribe, role, strength, dexterity, intellect, location);
         })
         .then((data) => {
             console.log("createCharacter data[0]:", data[0]);
